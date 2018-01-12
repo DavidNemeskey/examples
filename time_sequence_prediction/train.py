@@ -21,6 +21,11 @@ class Sequence(nn.Module):
         c_t = Variable(torch.zeros(input.size(0), 51).double(), requires_grad=False)
         h_t2 = Variable(torch.zeros(input.size(0), 51).double(), requires_grad=False)
         c_t2 = Variable(torch.zeros(input.size(0), 51).double(), requires_grad=False)
+        if input.is_cuda:
+            h_t = h_t.cuda()
+            c_t = c_t.cuda()
+            h_t2 = h_t2.cuda()
+            c_t2 = c_t2.cuda()
 
         for i, input_t in enumerate(input.chunk(input.size(1), dim=1)):
             h_t, c_t = self.lstm1(input_t, (h_t, c_t))
@@ -33,13 +38,8 @@ class Sequence(nn.Module):
             h_t2, c_t2 = self.lstm2(h_t, (h_t2, c_t2))
             output = self.linear(h_t2)
             outputs += [output]
-        print('outputs:', end=' ')
-        for o in outputs:
-            print(o.size(), end=' ')
-        print()
         stacked = torch.stack(outputs, 1)
         outputs = stacked.squeeze(2)
-        print('after stack:', stacked.size(), 'after squeeze:', outputs.size())
         return outputs
 
 
@@ -53,6 +53,9 @@ class SequenceLSTM(nn.Module):
         # print('input', input.size())
         h_t = Variable(torch.zeros(2, input.size(0), 51).double(), requires_grad=False)
         c_t = Variable(torch.zeros(2, input.size(0), 51).double(), requires_grad=False)
+        if input.is_cuda:
+            h_t = h_t.cuda()
+            c_t = c_t.cuda()
         # print('h_t', h_t.size())
 
         output, (h_t, c_t) = self.lstm(input.unsqueeze(2), (h_t, c_t))
@@ -78,7 +81,6 @@ class SequenceLSTM(nn.Module):
 
 
 if __name__ == '__main__':
-    print('HERE')
     # set random seed to 0
     np.random.seed(0)
     torch.manual_seed(0)
@@ -91,11 +93,16 @@ if __name__ == '__main__':
     # build the model
     seq = SequenceLSTM()
     seq.double()
+    if torch.cuda.is_available():
+        input = input.cuda()
+        target = target.cuda()
+        test_input = test_input.cuda()
+        test_target = test_target.cuda()
+        seq = seq.cuda()
     criterion = nn.MSELoss()
     # use LBFGS as optimizer since we can load the whole data to train
     optimizer = optim.LBFGS(seq.parameters(), lr=0.8)
     # begin to train
-    print('THERE')
     for i in range(15):
         print('STEP: ', i)
 
@@ -103,7 +110,7 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             out = seq(input)
             loss = criterion(out, target)
-            print('loss:', loss.data.numpy()[0])
+            print('loss:', loss.data.cpu().numpy()[0])
             loss.backward()
             return loss
 
@@ -112,8 +119,8 @@ if __name__ == '__main__':
         future = 1000
         pred = seq(test_input, future=future)
         loss = criterion(pred[:, :-future], test_target)
-        print('test loss:', loss.data.numpy()[0])
-        y = pred.data.numpy()
+        print('test loss:', loss.data.cpu().numpy()[0])
+        y = pred.data.cpu().numpy()
         # draw the result
         plt.figure(figsize=(30, 10))
         plt.title('Predict future values for time sequences\n(Dashlines are predicted values)', fontsize=30)
