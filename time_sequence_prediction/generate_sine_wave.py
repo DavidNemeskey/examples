@@ -9,5 +9,5 @@ N = 100
 
 x = np.empty((N, L), 'int64')
 x[:] = np.array(range(L)) + np.random.randint(-4 * T, 4 * T, N).reshape(N, 1)
-data = np.sin(x / 1.0 / T).astype('float64')
+data = np.sin(x / T)
 torch.save(data, open('traindata.pt', 'wb'))
