@@ -1,4 +1,5 @@
 from __future__ import print_function
+import time
 
 import torch
 import torch.nn as nn
@@ -18,6 +19,8 @@ class Sequence(nn.Module):
         self.lstm1 = lstm_cell(1, 51)
         self.lstm2 = lstm_cell(51, 51)
         self.linear = nn.Linear(51, 1)
+        # for param in self.lstm1.parameters():
+        #     print(param.data)
 
     def forward(self, input, future=0):
         outputs = []
@@ -25,6 +28,8 @@ class Sequence(nn.Module):
         c_t = Variable(torch.zeros(input.size(0), 51).double(), requires_grad=False)
         h_t2 = Variable(torch.zeros(input.size(0), 51).double(), requires_grad=False)
         c_t2 = Variable(torch.zeros(input.size(0), 51).double(), requires_grad=False)
+        # print('H_T\n', h_t)
+        # print('H_T2\n', h_t2)
         if input.is_cuda:
             h_t = h_t.cuda()
             c_t = c_t.cuda()
@@ -85,6 +90,7 @@ class SequenceLSTM(nn.Module):
 
 
 if __name__ == '__main__':
+    t = time.time()
     # set random seed to 0
     np.random.seed(0)
     torch.manual_seed(0)
@@ -95,8 +101,10 @@ if __name__ == '__main__':
     test_input = Variable(torch.from_numpy(data[:3, :-1]), requires_grad=False)
     test_target = Variable(torch.from_numpy(data[:3, 1:]), requires_grad=False)
     # build the model
-    seq = SequenceLSTM()
+    # seq = Sequence(nn.LSTMCell)
+    seq = Sequence(LstmCell)
     seq.double()
+    # print('INPUT\n', input)
     if torch.cuda.is_available():
         input = input.cuda()
         target = target.cuda()
@@ -108,12 +116,15 @@ if __name__ == '__main__':
     optimizer = optim.LBFGS(seq.parameters(), lr=0.8)
     # begin to train
     for i in range(15):
+    # for i in range(1):
         print('STEP: ', i)
 
         def closure():
             optimizer.zero_grad()
             out = seq(input)
+            # print('OUTPUT\n', out)
             loss = criterion(out, target)
+            # print('LOSS\n', loss)
             print('loss:', loss.data.cpu().numpy()[0])
             loss.backward()
             return loss
@@ -125,6 +136,7 @@ if __name__ == '__main__':
         loss = criterion(pred[:, :-future], test_target)
         print('test loss:', loss.data.cpu().numpy()[0])
         y = pred.data.cpu().numpy()
+        continue
         # draw the result
         plt.figure(figsize=(30, 10))
         plt.title('Predict future values for time sequences\n(Dashlines are predicted values)', fontsize=30)
@@ -142,3 +154,4 @@ if __name__ == '__main__':
         draw(y[2], 'b')
         plt.savefig('predict%d.pdf' % i)
         plt.close()
+    print('Took {} seconds.'.format(time.time() - t))

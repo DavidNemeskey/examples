@@ -30,6 +30,8 @@ class LstmCell(nn.Module):
             self.b_i_o = nn.Parameter(torch.Tensor(hidden_size))
             self.b_h_o = nn.Parameter(torch.Tensor(hidden_size))
 
+        self.reset_parameters()
+
     def reset_parameters(self):
         stdv = 1.0 / math.sqrt(self.hidden_size)
         for weight in self.parameters():
