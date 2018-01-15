@@ -100,3 +100,35 @@ class LstmCell2(nn.Module):
         h_t = o * torch.tanh(c_t)
 
         return h_t, c_t
+
+
+class LstmCell3(nn.Module):
+    def __init__(self, input_size, hidden_size, bias=True):
+        super(LstmCell3, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        self.w_i = nn.Linear(input_size, 4 * hidden_size, bias)
+        self.w_h = nn.Linear(hidden_size, 4 * hidden_size, bias)
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        stdv = 1.0 / math.sqrt(self.hidden_size)
+        for weight in self.parameters():
+            weight.data.uniform_(-stdv, stdv)
+
+    def forward(self, input, hidden):
+        h_t, c_t = hidden
+
+        ifgo = self.w_i(input) + self.w_h(h_t)
+
+        i, f, g, o = ifgo.chunk(4, 1)
+        i = torch.sigmoid(i)
+        f = torch.sigmoid(f)
+        g = torch.tanh(g)
+        o = torch.sigmoid(o)
+        c_t = f * c_t + i * g
+        h_t = o * torch.tanh(c_t)
+
+        return h_t, c_t
