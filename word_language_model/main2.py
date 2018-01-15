@@ -58,7 +58,7 @@ def read_config(config_file, model):
         return AttrDict(json.load(inf)[model])
 
 
-def batchify(data, bsz):
+def batchify(data, bsz, cuda):
     """
     Starting from sequential data, batchify arranges the dataset into columns.
     For instance, with the alphabet as the sequence and batch size 4, we'd get
@@ -78,6 +78,8 @@ def batchify(data, bsz):
     data = data.narrow(0, 0, nbatch * bsz)
     # Evenly divide the data across the bsz batches.
     data = data.view(bsz, -1).t().contiguous()
+    if cuda:
+        data = data.cuda()
     return data
 
 
@@ -107,7 +109,7 @@ def train(model, corpus, train_data, criterion, epoch, lr, config, log_interval)
     ntokens = len(corpus.dictionary)
     hidden = model.init_hidden(config.batch_size)
     for batch, i in enumerate(range(0, train_data.size(0) - 1, config.bptt)):
-        data, targets = get_batch(train_data, i)
+        data, targets = get_batch(train_data, i, config.bptt)
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
         hidden = repackage_hidden(hidden)
@@ -141,7 +143,7 @@ def evaluate(model, corpus, data_source, criterion, batch_size, bptt):
     ntokens = len(corpus.dictionary)
     hidden = model.init_hidden(batch_size)
     for i in range(0, data_source.size(0) - 1, bptt):
-        data, targets = get_batch(data_source, i, evaluation=True)
+        data, targets = get_batch(data_source, i, bptt, evaluation=True)
         output, hidden = model(data, hidden)
         output_flat = output.view(-1, ntokens)
         total_loss += len(data) * criterion(output_flat, targets).data
@@ -176,9 +178,9 @@ def main():
 
     train_batch_size = config.batch_size
     eval_batch_size = 10
-    train_data = batchify(corpus.train, train_batch_size)
-    val_data = batchify(corpus.valid, eval_batch_size)
-    test_data = batchify(corpus.test, eval_batch_size)
+    train_data = batchify(corpus.train, train_batch_size, args.cuda)
+    val_data = batchify(corpus.valid, eval_batch_size, args.cuda)
+    test_data = batchify(corpus.test, eval_batch_size, args.cuda)
 
     ###############################################################################
     # Build the model
@@ -188,9 +190,9 @@ def main():
     model = RNNModel(config.cell, ntokens, config.emsize,
                      config.nhid, config.nlayers, config.dropout, config.tied)
     if args.cuda:
-        train_data.cuda()
-        val_data.cuda()
-        test_data.cuda()
+        # train_data.cuda()
+        # val_data.cuda()
+        # test_data.cuda()
         model.cuda()
 
     ###############################################################################
@@ -200,17 +202,17 @@ def main():
     criterion = nn.CrossEntropyLoss()
 
     # Loop over epochs.
-    lr = args.lr
+    lr = config.lr
     best_val_loss = None
 
     # At any point you can hit Ctrl + C to break out of training early.
     try:
-        for epoch in range(1, args.epochs + 1):
+        for epoch in range(1, config.epochs + 1):
             epoch_start_time = time.time()
-            train(model, corpus, train_data, criterion, train_batch_size,
-                  epoch, lr, config.bptt, config.clip, args.log_interval)
+            train(model, corpus, train_data, criterion,
+                  epoch, lr, config, args.log_interval)
             val_loss = evaluate(model, corpus, val_data,
-                                criterion, eval_batch_size, args)
+                                criterion, eval_batch_size, config.bptt)
             print('-' * 89)
             print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
                   'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
@@ -234,7 +236,7 @@ def main():
 
     # Run on test data.
     test_loss = evaluate(model, corpus, test_data,
-                         criterion, eval_batch_size, args)
+                         criterion, eval_batch_size, config.bptt)
     print('=' * 89)
     print('| End of training | test loss {:5.2f} | test ppl {:8.2f}'.format(
         test_loss, math.exp(test_loss)))
