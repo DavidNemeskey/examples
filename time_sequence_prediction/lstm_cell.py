@@ -5,7 +5,11 @@ import torch
 import torch.nn as nn
 
 
+"""LSTM cell implementations. For experimentation and learning."""
+
+
 class LstmCell(nn.Module):
+    """The slowest: 367s on TSP."""
     def __init__(self, input_size, hidden_size, bias=True):
         super(LstmCell, self).__init__()
         self.input_size = input_size
@@ -63,6 +67,7 @@ class LstmCell(nn.Module):
 
 
 class LstmCell2(nn.Module):
+    """The 176s on TSP; the built-in LSTMCell takes 133s."""
     def __init__(self, input_size, hidden_size, bias=True):
         super(LstmCell2, self).__init__()
         self.input_size = input_size
@@ -103,6 +108,10 @@ class LstmCell2(nn.Module):
 
 
 class LstmCell3(nn.Module):
+    """
+    This one uses Linear layers, and is surprisingly much slower than the
+    previous one: 226s on TSP.
+    """
     def __init__(self, input_size, hidden_size, bias=True):
         super(LstmCell3, self).__init__()
         self.input_size = input_size
