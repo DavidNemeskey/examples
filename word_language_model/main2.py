@@ -5,7 +5,6 @@ import argparse
 import json
 import time
 import math
-import sys
 
 import torch
 import torch.nn as nn
@@ -59,7 +58,7 @@ def read_config(config_file, model):
         return AttrDict(json.load(inf)[model])
 
 
-def batchify(data, bsz, cuda):
+def batchify(data, bsz):
     """
     Starting from sequential data, batchify arranges the dataset into columns.
     For instance, with the alphabet as the sequence and batch size 4, we'd get
@@ -79,8 +78,6 @@ def batchify(data, bsz, cuda):
     data = data.narrow(0, 0, nbatch * bsz)
     # Evenly divide the data across the bsz batches.
     data = data.view(bsz, -1).t().contiguous()
-    if cuda:
-        data = data.cuda()
     return data
 
 
@@ -191,6 +188,9 @@ def main():
     model = RNNModel(config.cell, ntokens, config.emsize,
                      config.nhid, config.nlayers, config.dropout, config.tied)
     if args.cuda:
+        train_data.cuda()
+        val_data.cuda()
+        test_data.cuda()
         model.cuda()
 
     ###############################################################################
