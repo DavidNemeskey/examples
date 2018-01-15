@@ -208,6 +208,8 @@ def main():
     # At any point you can hit Ctrl + C to break out of training early.
     try:
         for epoch in range(1, config.epochs + 1):
+            lr_decay = config.lr_decay ** max(epoch - config.decay_delay, 0.0)
+            lr = config.lr * lr_decay
             epoch_start_time = time.time()
             train(model, corpus, train_data, criterion,
                   epoch, lr, config, args.log_interval)
@@ -223,9 +225,6 @@ def main():
                 with open(args.save, 'wb') as f:
                     torch.save(model, f)
                 best_val_loss = val_loss
-            else:
-                # Anneal the learning rate if no improvement has been seen in the validation dataset.
-                lr /= 4.0
     except KeyboardInterrupt:
         print('-' * 89)
         print('Exiting from training early')
