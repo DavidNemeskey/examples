@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.use('Agg')  # noqa
 import matplotlib.pyplot as plt
 
-from lstm_cell import LstmCell
+from lstm_cell import *
 
 
 class Sequence(nn.Module):
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     test_target = Variable(torch.from_numpy(data[:3, 1:]), requires_grad=False)
     # build the model
     # seq = Sequence(nn.LSTMCell)
-    seq = Sequence(LstmCell)
+    seq = Sequence(LstmCell2)
     seq.double()
     # print('INPUT\n', input)
     if torch.cuda.is_available():

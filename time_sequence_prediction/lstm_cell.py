@@ -64,7 +64,7 @@ class LstmCell(nn.Module):
 
 class LstmCell2(nn.Module):
     def __init__(self, input_size, hidden_size, bias=True):
-        super(LstmCell, self).__init__()
+        super(LstmCell2, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
