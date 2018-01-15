@@ -1,12 +1,8 @@
 from __future__ import print_function
+import math
+
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
-import torch.optim as optim
-import numpy as np
-import matplotlib
-matplotlib.use('Agg')  # noqa
-import matplotlib.pyplot as plt
 
 class LstmCell(nn.Module):
     def __init__(self, input_size, hidden_size, bias=True):

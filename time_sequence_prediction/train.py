@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -8,11 +9,14 @@ import matplotlib
 matplotlib.use('Agg')  # noqa
 import matplotlib.pyplot as plt
 
+from lstm_cell import LstmCell
+
+
 class Sequence(nn.Module):
-    def __init__(self):
+    def __init__(self, lstm_cell=nn.LSTMCell):
         super(Sequence, self).__init__()
-        self.lstm1 = nn.LSTMCell(1, 51)
-        self.lstm2 = nn.LSTMCell(51, 51)
+        self.lstm1 = lstm_cell(1, 51)
+        self.lstm2 = lstm_cell(51, 51)
         self.linear = nn.Linear(51, 1)
 
     def forward(self, input, future=0):
