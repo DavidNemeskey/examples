@@ -38,7 +38,7 @@ def parse_arguments():
         config = read_config(args.configuration, args.model)
         return args, config
     except Exception as e:
-        parser.error('Error reading configuration file:', e, file=sys.stderr)
+        parser.error('Error reading configuration file: {}'.format(e))
 
 
 class AttrDict(dict):
