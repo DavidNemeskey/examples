@@ -1,0 +1,15 @@
+"small": {
+	"cell": "LSTM",
+	"emsize": 200,
+	"nhid": 200,
+	"nlayers": 2,
+	"dropout": 0,
+	"tied": false,
+	"bptt": 20,
+	"batch_size": 20,
+	"lr": 1.0,
+	"lr_decay": 0.5,
+	"decay_delay": 4,
+	"clip": 5,
+	"epochs": 13
+}

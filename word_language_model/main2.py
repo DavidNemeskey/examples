@@ -2,8 +2,10 @@
 # vim: set fileencoding=utf-8 :
 
 import argparse
+import json
 import time
 import math
+import sys
 
 import torch
 import torch.nn as nn
@@ -24,15 +26,37 @@ def parse_arguments():
                         help='the configuration file (json).')
     parser.add_argument('--model', type=str, default='LSTM',
                         help='the model key name.')
-    parser.add_argument('--tied', action='store_true',
-                        help='tie the word embedding and softmax weights')
     parser.add_argument('--seed', type=int, default=1111, help='random seed')
     parser.add_argument('--cuda', action='store_true', help='use CUDA')
     parser.add_argument('--log-interval', type=int, default=200, metavar='N',
                         help='report interval')
     parser.add_argument('--save', type=str,  default='model.pt',
                         help='path to save the final model')
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    try:
+        config = read_config(args.configuration, args.model)
+        return args, config
+    except Exception as e:
+        parser.error('Error reading configuration file:', e, file=sys.stderr)
+
+
+class AttrDict(dict):
+    """Makes our life easier."""
+    def __getattr__(self, key):
+        if key not in self:
+            raise AttributeError('key {} missing'.format(key))
+        return self[key]
+
+    def __setattr__(self, key, value):
+        if key not in self:
+            raise AttributeError('key {} missing'.format(key))
+        self[key] = value
+
+
+def read_config(config_file, model):
+    with open(config_file) as inf:
+        return AttrDict(json.load(inf)[model])
 
 
 def batchify(data, bsz, cuda):
@@ -62,7 +86,7 @@ def batchify(data, bsz, cuda):
 
 def get_batch(source, i, bptt, evaluation=False):
     """
-    get_batch subdivides the source data into chunks of length args.bptt.
+    get_batch subdivides the source data into chunks of length bptt.
     If source is equal to the example output of the batchify function, with
     a bptt-limit of 2, we'd get the following two Variables for i = 0:
     ┌ a g m s ┐ ┌ b h n t ┐
@@ -78,14 +102,14 @@ def get_batch(source, i, bptt, evaluation=False):
     return data, target
 
 
-def train(model, corpus, train_data, criterion, batch_size, epoch, lr, args):
+def train(model, corpus, train_data, criterion, epoch, lr, config, log_interval):
     # Turn on training mode which enables dropout.
     model.train()
     total_loss = 0
     start_time = time.time()
     ntokens = len(corpus.dictionary)
-    hidden = model.init_hidden(batch_size)
-    for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
+    hidden = model.init_hidden(config.batch_size)
+    for batch, i in enumerate(range(0, train_data.size(0) - 1, config.bptt)):
         data, targets = get_batch(train_data, i)
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
@@ -96,30 +120,30 @@ def train(model, corpus, train_data, criterion, batch_size, epoch, lr, args):
         loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-        torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
+        torch.nn.utils.clip_grad_norm(model.parameters(), config.clip)
         for p in model.parameters():
             p.data.add_(-lr, p.grad.data)
 
         total_loss += loss.data
 
-        if batch % args.log_interval == 0 and batch > 0:
-            cur_loss = total_loss[0] / args.log_interval
+        if batch % log_interval == 0 and batch > 0:
+            cur_loss = total_loss[0] / log_interval
             elapsed = time.time() - start_time
             print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | '
                   'ms/batch {:5.2f} | loss {:5.2f} | ppl {:8.2f}'.format(
-                      epoch, batch, len(train_data) // args.bptt, lr,
-                      elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
+                      epoch, batch, len(train_data) // config.bptt, lr,
+                      elapsed * 1000 / log_interval, cur_loss, math.exp(cur_loss)))
             total_loss = 0
             start_time = time.time()
 
 
-def evaluate(model, corpus, data_source, criterion, batch_size, args):
+def evaluate(model, corpus, data_source, criterion, batch_size, bptt):
     # Turn on evaluation mode which disables dropout.
     model.eval()
     total_loss = 0
     ntokens = len(corpus.dictionary)
     hidden = model.init_hidden(batch_size)
-    for i in range(0, data_source.size(0) - 1, args.bptt):
+    for i in range(0, data_source.size(0) - 1, bptt):
         data, targets = get_batch(data_source, i, evaluation=True)
         output, hidden = model(data, hidden)
         output_flat = output.view(-1, ntokens)
@@ -137,7 +161,7 @@ def repackage_hidden(h):
 
 
 def main():
-    args = parse_arguments()
+    args, config = parse_arguments()
     torch.manual_seed(args.seed)
 
     if torch.cuda.is_available():
@@ -153,7 +177,7 @@ def main():
 
     corpus = data.Corpus(args.data)
 
-    train_batch_size = args.batch_size
+    train_batch_size = config.batch_size
     eval_batch_size = 10
     train_data = batchify(corpus.train, train_batch_size)
     val_data = batchify(corpus.valid, eval_batch_size)
@@ -164,8 +188,8 @@ def main():
     ###############################################################################
 
     ntokens = len(corpus.dictionary)
-    model = RNNModel(args.model, ntokens, args.emsize,
-                     args.nhid, args.nlayers, args.dropout, args.tied)
+    model = RNNModel(config.cell, ntokens, config.emsize,
+                     config.nhid, config.nlayers, config.dropout, config.tied)
     if args.cuda:
         model.cuda()
 
@@ -183,8 +207,8 @@ def main():
     try:
         for epoch in range(1, args.epochs + 1):
             epoch_start_time = time.time()
-            train(train_data, corpus, criterion,
-                  train_batch_size, epoch, lr, args)
+            train(model, corpus, train_data, criterion, train_batch_size,
+                  epoch, lr, config.bptt, config.clip, args.log_interval)
             val_loss = evaluate(model, corpus, val_data,
                                 criterion, eval_batch_size, args)
             print('-' * 89)
