@@ -232,6 +232,7 @@ def main():
     val_data = batchify(corpus.valid, eval_batch_size)
     test_data = batchify(corpus.test, eval_batch_size)
     eval_batch_size = 10
+    ntoken = len(corpus.dictionary)
 
     # Create the models and the global ops
     with tf.Graph().as_default() as graph:
@@ -241,15 +242,15 @@ def main():
 
         with tf.name_scope('Train'):
             with tf.variable_scope("Model", reuse=False, initializer=initializer):
-                mtrain = LSTMModel(True, config.ntoken, config.nhid, config.nlayers,
+                mtrain = LSTMModel(True, ntoken, config.nhid, config.nlayers,
                                    config.batch_size, config.bptt, config.clip)
         with tf.name_scope('Valid'):
             with tf.variable_scope("Model", reuse=True, initializer=initializer):
-                mvalid = LSTMModel(False, config.ntoken, config.nhid, config.nlayers,
+                mvalid = LSTMModel(False, ntoken, config.nhid, config.nlayers,
                                    eval_batch_size, config.bptt, config.clip)
         with tf.name_scope('Test'):
             with tf.variable_scope("Model", reuse=True, initializer=initializer):
-                mtest = LSTMModel(False, config.ntoken, config.nhid, config.nlayers,
+                mtest = LSTMModel(False, ntoken, config.nhid, config.nlayers,
                                   eval_batch_size, config.bptt, config.clip)
         with tf.name_scope('Global_ops'):
             init = tf.global_variables_initializer()
