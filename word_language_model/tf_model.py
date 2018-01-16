@@ -76,6 +76,10 @@ class LSTMModel(object):
         return self._prediction
 
     @property
+    def initial_state(self):
+        return self._initial_state
+
+    @property
     def cost(self):
         return self._cost
 

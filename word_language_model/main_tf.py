@@ -172,6 +172,7 @@ def train(sess, model, corpus, train_data, epoch, lr, config, log_interval):
     total_loss = 0
     start_time = time.time()
     fetches = [model.cost, model.predictions, model.final_state, model.train_op]
+    hidden = sess.run(model.initial_state)
 
     for batch, i in enumerate(range(0, train_data.size(0) - 1, config.bptt)):
         data, targets = get_batch(train_data, i, config.bptt)
