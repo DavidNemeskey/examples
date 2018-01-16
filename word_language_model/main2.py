@@ -6,12 +6,13 @@ import json
 import time
 import math
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
 import data
-from model import RNNModel
+from model import RNNModel, RNNModel2
 
 
 def parse_arguments():
@@ -97,7 +98,7 @@ def get_batch(source, i, bptt, evaluation=False):
     """
     seq_len = min(bptt, len(source) - 1 - i)
     data = Variable(source[i:i+seq_len], volatile=evaluation)
-    target = Variable(source[i+1:i+1+seq_len].view(-1))
+    target = Variable(source[i+1:i+1+seq_len])  # .view(-1))
     return data, target
 
 
@@ -110,12 +111,20 @@ def train(model, corpus, train_data, criterion, epoch, lr, config, log_interval)
     hidden = model.init_hidden(config.batch_size)
     for batch, i in enumerate(range(0, train_data.size(0) - 1, config.bptt)):
         data, targets = get_batch(train_data, i, config.bptt)
+        def to_str(f):
+            return corpus.dictionary.idx2word[f]
+        # print(data.data.cpu().numpy())
+        print('DATA\n', np.vectorize(to_str)(data.data.cpu().numpy()))
+        # print(targets.data.cpu().numpy())
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
         hidden = repackage_hidden(hidden)
         model.zero_grad()
         output, hidden = model(data, hidden)
-        loss = criterion(output.view(-1, ntokens), targets)
+        print('TARGETS\n', np.vectorize(to_str)(targets.data.cpu().numpy()))
+        _, indices = output.max(2)
+        print('OUTPUT\n', np.vectorize(to_str)(indices.data.cpu().numpy()))
+        loss = criterion(output.view(-1, ntokens), targets.view(-1))
         loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -146,7 +155,8 @@ def evaluate(model, corpus, data_source, criterion, batch_size, bptt):
         data, targets = get_batch(data_source, i, bptt, evaluation=True)
         output, hidden = model(data, hidden)
         output_flat = output.view(-1, ntokens)
-        total_loss += len(data) * criterion(output_flat, targets).data
+        targets_flat = targets.view(-1)
+        total_loss += len(data) * criterion(output_flat, targets_flat).data
         hidden = repackage_hidden(hidden)
     return total_loss[0] / len(data_source)
 
@@ -187,8 +197,8 @@ def main():
     ###############################################################################
 
     ntokens = len(corpus.dictionary)
-    model = RNNModel(config.cell, ntokens, config.emsize,
-                     config.nhid, config.nlayers, config.dropout, config.tied)
+    model = RNNModel2(config.cell, ntokens, config.emsize,
+                      config.nhid, config.nlayers, config.dropout, config.tied)
     if args.cuda:
         # train_data.cuda()
         # val_data.cuda()
