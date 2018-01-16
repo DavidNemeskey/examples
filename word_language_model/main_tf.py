@@ -175,8 +175,8 @@ def train(sess, model, corpus, train_data, epoch, lr, config, log_interval):
 
     for batch, i in enumerate(range(0, train_data.size(0) - 1, config.bptt)):
         data, targets = get_batch(train_data, i, config.bptt)
-        print('DATA\n', np.vectorize(to_str)(data.data.cpu().numpy()))
-        print('TARGETS\n', np.vectorize(to_str)(targets.data.cpu().numpy()))
+        print('DATA\n', np.vectorize(to_str)(data))
+        print('TARGETS\n', np.vectorize(to_str)(targets))
 
         feed_dict = {
             model.input_data: data,
