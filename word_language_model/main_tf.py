@@ -171,7 +171,6 @@ def train(sess, model, corpus, train_data, epoch, lr, config, log_interval):
     model.assign_lr(sess, lr)
     total_loss = 0
     start_time = time.time()
-    hidden = model.init_hidden(config.batch_size)
     fetches = [model.cost, model.predictions, model.final_state, model.train_op]
 
     for batch, i in enumerate(range(0, train_data.size(0) - 1, config.bptt)):
@@ -207,7 +206,6 @@ def evaluate(sess, model, corpus, data_source, batch_size, bptt):
     model.eval()
     total_loss = 0
     ntokens = len(corpus.dictionary)
-    hidden = model.init_hidden(batch_size)
     for i in range(0, data_source.size(0) - 1, bptt):
         data, targets = get_batch(data_source, i, bptt, evaluation=True)
         output, hidden = model(data, hidden)
