@@ -1,5 +1,5 @@
 import tensorflow as tf
-import tf.contrib.rnn as rnn
+import tensorflow.contrib.rnn as rnn
 
 class LSTMModel(object):
     """Generic LSTM language model based on the PTB model in tf/models."""

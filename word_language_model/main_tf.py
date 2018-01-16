@@ -31,7 +31,6 @@ def parse_arguments():
     parser.add_argument('--model', type=str, default='LSTM',
                         help='the model key name.')
     parser.add_argument('--seed', type=int, default=1111, help='random seed')
-    parser.add_argument('--cuda', action='store_true', help='use CUDA')
     parser.add_argument('--log-interval', type=int, default=200, metavar='N',
                         help='report interval')
     parser.add_argument('--save', type=str,  default='model.pt',
@@ -63,7 +62,7 @@ def read_config(config_file, model):
         return AttrDict(json.load(inf)[model])
 
 
-def batchify(data, bsz, cuda):
+def batchify(data, bsz):
     """
     Starting from sequential data, batchify arranges the dataset into columns.
     For instance, with the alphabet as the sequence and batch size 4, we'd get
@@ -83,8 +82,6 @@ def batchify(data, bsz, cuda):
     data = data.narrow(0, 0, nbatch * bsz)
     # Evenly divide the data across the bsz batches.
     data = data.view(bsz, -1).t().contiguous()
-    if cuda:
-        data = data.cuda()
     return data
 
 
@@ -231,9 +228,9 @@ def main():
 
     train_batch_size = config.batch_size
     eval_batch_size = 10
-    train_data = batchify(corpus.train, train_batch_size, args.cuda)
-    val_data = batchify(corpus.valid, eval_batch_size, args.cuda)
-    test_data = batchify(corpus.test, eval_batch_size, args.cuda)
+    train_data = batchify(corpus.train, train_batch_size)
+    val_data = batchify(corpus.valid, eval_batch_size)
+    test_data = batchify(corpus.test, eval_batch_size)
     eval_batch_size = 10
 
     # Create the models and the global ops
