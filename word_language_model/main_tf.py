@@ -206,17 +206,21 @@ def train(sess, model, corpus, train_data, epoch, lr, config, log_interval):
 
 
 def evaluate(sess, model, corpus, data_source, batch_size, bptt):
-    # Turn on evaluation mode which disables dropout.
-    model.eval()
     total_loss = 0
-    ntokens = len(corpus.dictionary)
+    fetches = [model.cost, model.predictions, model.final_state]
+    hidden = sess.run(model.initial_state)
+
     for i in range(0, data_source.size(0) - 1, bptt):
         data, targets = get_batch(data_source, i, bptt, evaluation=True)
-        output, hidden = model(data, hidden)
-        output_flat = output.view(-1, ntokens)
-        targets_flat = targets.view(-1)
-        total_loss += len(data) * criterion(output_flat, targets_flat).data
-    return total_loss[0] / len(data_source)
+        feed_dict = {
+            model.input_data: data,
+            model.targets: targets,
+            model.initial_state: hidden
+        }
+        cost, output, hidden = sess.run(fetches, feed_dict)
+        total_loss += cost
+    print('TOTAL LOSS', total_loss, 'LEN DATA', len(data_source), data_source.size())
+    return total_loss / len(data_source)
 
 
 def main():
