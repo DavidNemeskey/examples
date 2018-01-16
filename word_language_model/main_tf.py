@@ -163,7 +163,7 @@ def get_batch(source, i, bptt, evaluation=False):
 #     return np.exp(costs / iters), global_step
 
 
-def train(sess, model, corpus, train_data, criterion, epoch, lr, config, log_interval):
+def train(sess, model, corpus, train_data, epoch, lr, config, log_interval):
     def to_str(f):
         return corpus.dictionary.idx2word[f]
 
@@ -202,7 +202,7 @@ def train(sess, model, corpus, train_data, criterion, epoch, lr, config, log_int
             start_time = time.time()
 
 
-def evaluate(model, corpus, data_source, criterion, batch_size, bptt):
+def evaluate(sess, model, corpus, data_source, batch_size, bptt):
     # Turn on evaluation mode which disables dropout.
     model.eval()
     total_loss = 0
@@ -271,9 +271,9 @@ def main():
                 lr_decay = config.lr_decay ** max(epoch - config.decay_delay, 0.0)
                 lr = config.lr * lr_decay
                 epoch_start_time = time.time()
-                train(mtrain, corpus, train_data,
+                train(sess, mtrain, corpus, train_data,
                       epoch, lr, config, args.log_interval)
-                val_loss = evaluate(mvalid, corpus, val_data,
+                val_loss = evaluate(sess, mvalid, corpus, val_data,
                                     eval_batch_size, config.bptt)
                 print('-' * 89)
                 print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
@@ -285,7 +285,7 @@ def main():
             print('Exiting from training early')
 
         # Run on test data.
-        test_loss = evaluate(mtest, corpus, test_data,
+        test_loss = evaluate(sess, mtest, corpus, test_data,
                              eval_batch_size, config.bptt)
         print('=' * 89)
         print('| End of training | test loss {:5.2f} | test ppl {:8.2f}'.format(
