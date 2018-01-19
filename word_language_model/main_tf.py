@@ -176,7 +176,9 @@ def train(sess, model, corpus, train_data, epoch, lr, config, log_interval):
 
     for batch, i in enumerate(range(0, train_data.size(0) - 1, config.bptt)):
         data, targets = get_batch(train_data, i, config.bptt)
-        if len(data) < config.bptt:
+        data = data.T
+        targets = targets.T
+        if data.shape[1] < config.bptt:
             break
         print('DATA\n', np.vectorize(to_str)(data))
         print('TARGETS\n', np.vectorize(to_str)(targets))
@@ -192,7 +194,7 @@ def train(sess, model, corpus, train_data, epoch, lr, config, log_interval):
         indices = np.argmax(output, 2)
         print('OUTPUT\n', np.vectorize(to_str)(indices.data))
 
-        total_loss += cost
+        total_loss += cost / config.bptt
 
         if batch % log_interval == 0 and batch > 0:
             cur_loss = total_loss / log_interval
@@ -212,6 +214,10 @@ def evaluate(sess, model, corpus, data_source, batch_size, bptt):
 
     for i in range(0, data_source.size(0) - 1, bptt):
         data, targets = get_batch(data_source, i, bptt, evaluation=True)
+        data = data.T
+        targets = targets.T
+        if data.shape[1] < bptt:
+            break
         feed_dict = {
             model.input_data: data,
             model.targets: targets,
