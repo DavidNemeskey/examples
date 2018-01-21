@@ -47,12 +47,12 @@ class LSTMModel(object):
 
         if is_training:
             self._lr = tf.Variable(0.0, trainable=False)
-            tvars = tf.trainable_variables()
-            grads = tf.gradients(self.cost, tvars)
+            self.tvars = tf.trainable_variables()
+            self.grads = tf.gradients(self.cost, self.tvars)
             if clip:
-                grads, _ = tf.clip_by_global_norm(grads, clip)
+                self.clipped_grads, _ = tf.clip_by_global_norm(self.grads, clip)
             optimizer = tf.train.GradientDescentOptimizer(self._lr)
-            self._train_op = optimizer.apply_gradients(zip(grads, tvars))
+            self._train_op = optimizer.apply_gradients(zip(self.clipped_grads, self.tvars))
 
             self._new_lr = tf.placeholder(
                 tf.float32, shape=[], name="new_learning_rate")
