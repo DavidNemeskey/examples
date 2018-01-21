@@ -180,19 +180,39 @@ def train(sess, model, corpus, train_data, epoch, lr, config, log_interval):
         targets = targets.T
         if data.shape[1] < config.bptt:
             break
-        print('DATA\n', np.vectorize(to_str)(data))
-        print('TARGETS\n', np.vectorize(to_str)(targets))
+        # print('DATA\n', np.vectorize(to_str)(data))
+        # print('TARGETS\n', np.vectorize(to_str)(targets))
 
         feed_dict = {
             model.input_data: data,
             model.targets: targets,
             model.initial_state: hidden
         }
-        cost, output, hidden, _ = sess.run(fetches, feed_dict)
-        print('COST', cost)
+        cost, output, hidden, _, grads = sess.run(fetches + [model.grads], feed_dict)
+        # all_min, all_max, all_sum, all_size = 1000, -1000, 0, 0
+        for tv, g in zip(model.tvars, grads):
+            #  tensorflow.python.framework.ops import IndexedSlicesValue
+            if isinstance(g, tuple):
+                shape = g.dense_shape if isinstance(g, tuple) else g.shape
+                data = g.values
+            else:
+                shape, data = g.shape, g 
+            # all_min = all_min if data.min() >= all_min else data.min()
+            # all_max = all_max if data.max() <= all_max else data.max()
+            # all_sum += data.sum()
+            # from functools import reduce
+            # all_size += reduce(lambda a, b: a * b, shape)
+            # print(tv, shape, data.min(), data.max(), data.mean(), data.std())
+        # print('Sum', all_min, all_max, all_sum / all_size)
+        # print()
+        # if batch % log_interval == 0 and batch > 0:
+        #     sys.exit()
+        # else:
+        #     cost, output, hidden, _ = sess.run(fetches, feed_dict)
+        # print('COST', cost)
 
-        indices = np.argmax(output, 2)
-        print('OUTPUT\n', np.vectorize(to_str)(indices.data))
+        # indices = np.argmax(output, 2)
+        # print('OUTPUT\n', np.vectorize(to_str)(indices.data))
 
         total_loss += cost / config.bptt
 
@@ -202,7 +222,8 @@ def train(sess, model, corpus, train_data, epoch, lr, config, log_interval):
             print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | '
                   'ms/batch {:5.2f} | loss {:5.2f} | ppl {:8.2f}'.format(
                       epoch, batch, len(train_data) // config.bptt, lr,
-                      elapsed * 1000 / log_interval, cur_loss, math.exp(cur_loss)))
+                      elapsed * 1000 / log_interval, cur_loss, math.exp(cur_loss)),
+                  flush=True)
             total_loss = 0
             start_time = time.time()
 
@@ -225,7 +246,7 @@ def evaluate(sess, model, corpus, data_source, batch_size, bptt):
         }
         cost, output, hidden = sess.run(fetches, feed_dict)
         total_loss += cost
-    print('TOTAL LOSS', total_loss, 'LEN DATA', len(data_source), data_source.size())
+    # print('TOTAL LOSS', total_loss, 'LEN DATA', len(data_source), data_source.size())
     return total_loss / len(data_source)
 
 

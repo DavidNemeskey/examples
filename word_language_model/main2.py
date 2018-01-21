@@ -114,23 +114,37 @@ def train(model, corpus, train_data, criterion, epoch, lr, config, log_interval)
         def to_str(f):
             return corpus.dictionary.idx2word[f]
         # print(data.data.cpu().numpy())
-        print('DATA\n', np.vectorize(to_str)(data.data.cpu().numpy()))
+        # print('DATA\n', np.vectorize(to_str)(data.data.cpu().numpy()))
         # print(targets.data.cpu().numpy())
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
         hidden = repackage_hidden(hidden)
         model.zero_grad()
         output, hidden = model(data, hidden)
-        print('TARGETS\n', np.vectorize(to_str)(targets.data.cpu().numpy()))
-        _, indices = output.max(2)
-        print('OUTPUT\n', np.vectorize(to_str)(indices.data.cpu().numpy()))
+        # print('TARGETS\n', np.vectorize(to_str)(targets.data.cpu().numpy()))
+        # _, indices = output.max(2)
+        # print('OUTPUT\n', np.vectorize(to_str)(indices.data.cpu().numpy()))
         loss = criterion(output.view(-1, ntokens), targets.view(-1))
         loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-        torch.nn.utils.clip_grad_norm(model.parameters(), config.clip)
-        for p in model.parameters():
-            p.data.add_(-lr, p.grad.data)
+        # torch.nn.utils.clip_grad_norm(model.parameters(), config.clip)
+        # all_min, all_max, all_sum, all_size = 1000, -1000, 0, 0
+        for name, p in model.named_parameters():
+            data = p.grad.data
+            shape = data.size()
+            # all_min = all_min if data.min() >= all_min else data.min()
+            # all_max = all_max if data.max() <= all_max else data.max()
+            # all_sum += data.sum()
+            # from functools import reduce
+            # all_size += reduce(lambda a, b: a * b, shape)
+            # print(name, shape, data.min(), data.max(), data.mean(), data.std())
+            p.grad.data.clamp_(-5.0, 5.0)
+            p.data.add_(-1 * lr, p.grad.data)
+        # print('Sum', all_min, all_max, all_sum / all_size)
+        # print()
+        # if batch % log_interval == 0 and batch > 0:
+        #     sys.exit()
 
         total_loss += loss.data
 
@@ -140,7 +154,8 @@ def train(model, corpus, train_data, criterion, epoch, lr, config, log_interval)
             print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | '
                   'ms/batch {:5.2f} | loss {:5.2f} | ppl {:8.2f}'.format(
                       epoch, batch, len(train_data) // config.bptt, lr,
-                      elapsed * 1000 / log_interval, cur_loss, math.exp(cur_loss)))
+                      elapsed * 1000 / log_interval, cur_loss, math.exp(cur_loss)),
+                  flush=True)
             total_loss = 0
             start_time = time.time()
 
